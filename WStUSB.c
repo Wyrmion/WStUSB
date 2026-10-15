@@ -1,14 +1,14 @@
  /**
  ****************************************************************************
- * @file     MyStUSB.c
+ * @file     WStUSB.c
  * @author   Kukushkin A.V.
  * @brief    this file provide code for stm32 usb CDC shell 
- * @version  V1.0.1
+ * @version  V1.0.2
  * @date     15 Oct 2026.
  *************************************************************************
  */
  
-#include "MyStUSB.h"
+#include "WStUSB.h"
 #include "usbd_cdc_if.h"
 
 #include "wheap.h"
@@ -22,7 +22,7 @@
   #include "cmsis_os2.h"
 #endif
 
-struct MyStUSBHandle
+struct WStUSBHandle
 {
   HWInterface_t parent;
   uint8_t*  RxBuff;
@@ -37,7 +37,7 @@ struct MyStUSBHandle
   void*     ctx;
 };
 #ifdef NO_MY_MALLOC
-static MyStUSBHandle_t hdev;
+static WStUSBHandle_t hdev;
 #endif
 
 static bool ReadRxBuff( void* this_ptr,uint8_t* data,   size_t* len,size_t  max_len);
@@ -47,7 +47,7 @@ static bool SendData(   void* this_ptr,uint8_t* data,size_t len);
 static void Process(    void* this_ptr); 
 static bool IsFree(     void* this_ptr);
 
-static void ResetDrdy(MyStUSBHandle_t* husb);
+static void ResetDrdy(WStUSBHandle_t* husb);
 
 static HwInterface_vtable_t vtable = {
     .ReadRxBuff = ReadRxBuff,
@@ -60,14 +60,14 @@ static HwInterface_vtable_t vtable = {
 
 static void SetRxBuff(void* this_ptr,uint8_t* /*data*/RxBuff,size_t /*max len*/max_len)
 {
-  MyStUSBHandle_t* husb = (MyStUSBHandle_t*)this_ptr;
+  WStUSBHandle_t* husb = (WStUSBHandle_t*)this_ptr;
 
   husb->RxBuff = RxBuff;
   husb->RxBuff_len = max_len;
 }
 static void SetTxBuff(void* this_ptr,uint8_t* /*data*/TxBuff,size_t /*max len*/max_len)
 {
-  MyStUSBHandle_t* husb = (MyStUSBHandle_t*)this_ptr;
+  WStUSBHandle_t* husb = (WStUSBHandle_t*)this_ptr;
 
   husb->TxBuff = TxBuff;
   husb->TxBuff_len = max_len;
@@ -75,7 +75,7 @@ static void SetTxBuff(void* this_ptr,uint8_t* /*data*/TxBuff,size_t /*max len*/m
 
 static bool ReadRxBuff(void* this_ptr,uint8_t* data,size_t* len,size_t max_len)
 {
-  MyStUSBHandle_t* husb = (MyStUSBHandle_t*)this_ptr;
+  WStUSBHandle_t* husb = (WStUSBHandle_t*)this_ptr;
   
   if(husb->drdy == true)
   {
@@ -86,7 +86,7 @@ static bool ReadRxBuff(void* this_ptr,uint8_t* data,size_t* len,size_t max_len)
   return false;
 }
 
-static void ResetDrdy(MyStUSBHandle_t* husb)
+static void ResetDrdy(WStUSBHandle_t* husb)
 {
   __disable_irq();
     husb->drdy = false;
@@ -97,7 +97,7 @@ static void ResetDrdy(MyStUSBHandle_t* husb)
 
 static bool SendData(void* this_ptr,uint8_t* data,size_t len)
 {
-  MyStUSBHandle_t* cthis = (MyStUSBHandle_t*)this_ptr;
+  WStUSBHandle_t* cthis = (WStUSBHandle_t*)this_ptr;
   
   #ifdef MY_ST_USB_FS
     if(CDC_Transmit_FS(data,len) == USBD_BUSY) return false;
@@ -112,7 +112,7 @@ static bool IsFree(void* this_ptr)
   return CDC_IsFree();
 }
 
-void MyStUsb_RxClbk(MyStUSBHandle_t* husb,uint8_t* data,size_t len)
+void WStUSB_RxClbk(WStUSBHandle_t* husb,uint8_t* data,size_t len)
 {
   if(husb == NULL) 
     return;
@@ -130,7 +130,7 @@ void MyStUsb_RxClbk(MyStUSBHandle_t* husb,uint8_t* data,size_t len)
   #endif
 }
 
-void MyStUsb_TxClbk(MyStUSBHandle_t* husb)
+void WStUSB_TxClbk(WStUSBHandle_t* husb)
 {
   #ifdef W_USE_RTOS
     osThreadFlagsSet(husb->ctx,0b111);
@@ -142,12 +142,12 @@ static void Process(void* this_ptr)
   UNUSED(this_ptr);
 }
 
-MyStUSBHandle_t* MyStUSB_ctor(void* ctx)
+WStUSBHandle_t* WStUSB_ctor(void* ctx)
 {
-  MyStUSBHandle_t *phUsb = NULL;
+  WStUSBHandle_t *phUsb = NULL;
 
   
-  phUsb = heap_malloc_cast(MyStUSBHandle_t);
+  phUsb = heap_malloc_cast(WStUSBHandle_t);
   
   if(phUsb == NULL) return NULL;
 
@@ -165,7 +165,7 @@ MyStUSBHandle_t* MyStUSB_ctor(void* ctx)
   return phUsb;
 }
 
-void MyStUSB_dtor(MyStUSBHandle_t *husb)
+void WStUSB_dtor(WStUSBHandle_t *husb)
 {
   #ifndef NO_MY_MALLOC
     free(husb);
