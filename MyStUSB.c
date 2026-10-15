@@ -1,17 +1,26 @@
-/**
+ /**
  ****************************************************************************
  * @file     MyStUSB.c
  * @author   Kukushkin A.V.
  * @brief    this file provide code for stm32 usb CDC shell 
- * @version  V1.0.0
- * @date     28 March 2024.
+ * @version  V1.0.1
+ * @date     15 Oct 2026.
  *************************************************************************
  */
  
 #include "MyStUSB.h"
 #include "usbd_cdc_if.h"
 
+#include "wheap.h"
+#include "InterfacePrivate.h"
+
+#include "stdbool.h"
 //#define MYUSB_W8_FREE
+
+
+#ifdef W_USE_RTOS
+  #include "cmsis_os2.h"
+#endif
 
 struct MyStUSBHandle
 {
@@ -24,6 +33,8 @@ struct MyStUSBHandle
 
   size_t    RxLeng;
   bool      drdy;
+
+  void*     ctx;
 };
 #ifdef NO_MY_MALLOC
 static MyStUSBHandle_t hdev;
@@ -32,7 +43,7 @@ static MyStUSBHandle_t hdev;
 static bool ReadRxBuff( void* this_ptr,uint8_t* data,   size_t* len,size_t  max_len);
 static void SetRxBuff(  void* this_ptr,uint8_t* RxBuff, size_t  max_len);
 static void SetTxBuff(  void* this_ptr,uint8_t* RxBuff, size_t  max_len);
-static bool SendData(   void* this_ptr,uint8_t* data,   uint8_t len);
+static bool SendData(   void* this_ptr,uint8_t* data,size_t len);
 static void Process(    void* this_ptr); 
 static bool IsFree(     void* this_ptr);
 
@@ -80,14 +91,19 @@ static void ResetDrdy(MyStUSBHandle_t* husb)
   __disable_irq();
     husb->drdy = false;
   __enable_irq();
+
+  
 }
 
-static bool SendData(void* this_ptr/*this*/,uint8_t* data/*data*/,uint8_t len/*len*/)
+static bool SendData(void* this_ptr,uint8_t* data,size_t len)
 {
-  MyStUSBHandle_t* husb = (MyStUSBHandle_t*)this_ptr;
-
-  if(CDC_Transmit_FS(data,len) == USBD_BUSY) return false;
+  MyStUSBHandle_t* cthis = (MyStUSBHandle_t*)this_ptr;
   
+  #ifdef MY_ST_USB_FS
+    if(CDC_Transmit_FS(data,len) == USBD_BUSY) return false;
+  #else 
+    if(CDC_Transmit_HS(data,len) == USBD_BUSY) return false;
+  #endif
   return true;
 }
 
@@ -98,11 +114,27 @@ static bool IsFree(void* this_ptr)
 
 void MyStUsb_RxClbk(MyStUSBHandle_t* husb,uint8_t* data,size_t len)
 {
-  if(husb == NULL) return;
-  if(len>husb->RxBuff_len) while(1);//bug catch;
-  else memcpy(husb->RxBuff,data,len);
+  if(husb == NULL) 
+    return;
+
+  if(len>husb->RxBuff_len) 
+    while(1);//bug catch;
+  else 
+    memcpy(husb->RxBuff,data,len);
+  
   husb->RxLeng = len;
   husb->drdy = true;
+
+  #ifdef W_USE_RTOS
+    osThreadFlagsSet(husb->ctx,0b111);
+  #endif
+}
+
+void MyStUsb_TxClbk(MyStUSBHandle_t* husb)
+{
+  #ifdef W_USE_RTOS
+    osThreadFlagsSet(husb->ctx,0b111);
+  #endif
 }
 
 static void Process(void* this_ptr)
@@ -110,16 +142,13 @@ static void Process(void* this_ptr)
   UNUSED(this_ptr);
 }
 
-MyStUSBHandle_t* MyStUSB_ctor(void)
+MyStUSBHandle_t* MyStUSB_ctor(void* ctx)
 {
   MyStUSBHandle_t *phUsb = NULL;
 
-  #ifdef NO_MY_MALLOC
-    phUsb = &hdev;
-  #else 
-    phUsb = malloc(MyStUSBHandle_t);
-  #endif
-
+  
+  phUsb = heap_malloc_cast(MyStUSBHandle_t);
+  
   if(phUsb == NULL) return NULL;
 
   phUsb->parent.vtable = &vtable;
@@ -130,6 +159,8 @@ MyStUSBHandle_t* MyStUSB_ctor(void)
 
   phUsb->TxBuff = NULL;
   phUsb->TxBuff_len = 0;
+  
+  phUsb->ctx = ctx;
 
   return phUsb;
 }

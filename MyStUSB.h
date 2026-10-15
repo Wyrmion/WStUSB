@@ -3,8 +3,8 @@
   * @file     MyStUSB.h
   * @author   Kukushkin A.V.
   * @brief    Header file for HAL ST Driver use
-  * @version  V1.0.0
-  * @date     28 March 2024.
+  * @version  V1.0.1
+  * @date     15 Oct 2026.
   ******************************************************************************
   */ 
 
@@ -18,7 +18,7 @@ extern "C"{
 #endif
 
 #include <stdint.h>
-#include "InterfacePrivate.h"
+#include <stddef.h>
 
 
 
@@ -27,16 +27,13 @@ extern "C"{
 typedef struct MyStUSBHandle MyStUSBHandle_t;
 
 
-// #ifdef My_USB__NO_MALLOC_CNT
-//   CircBuf_Handle_t* CircBuf_ctor(InterfaceCmdData_t *payloadarr,uint32_t dept);
-// #else
-//   CircBuf_Handle_t* CircBuf_ctor(uint32_t dept);
-// #endif 
 
 	
-MyStUSBHandle_t* 	MyStUSB_ctor(void);
+MyStUSBHandle_t* 	MyStUSB_ctor(void* ctx);
 void 	            MyStUSB_dtor(MyStUSBHandle_t* husb);
+
 void 							MyStUsb_RxClbk(MyStUSBHandle_t* husb,uint8_t* data,size_t len);
+void 							MyStUsb_TxClbk(MyStUSBHandle_t* husb);
 
 
 
