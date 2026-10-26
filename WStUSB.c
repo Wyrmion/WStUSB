@@ -1,20 +1,73 @@
  /**
  ****************************************************************************
  * @file     WStUSB.c
- * @author   Kukushkin A.V.
+ * @author   Wyrm
  * @brief    this file provide code for stm32 usb CDC shell 
- * @version  V1.0.2
- * @date     15 Oct 2026.
+ * @version  V1.0.3
+ * @date     26 Oct 2026.
+ * @note     plz correct usbd_cdc_if.h:
+ *
+ *           USER CODE BEGIN INCLUDE 
+ *           #include "WStUSB.h"
+ *           USER CODE END INCLUDE 
+ *
+ *           USER CODE BEGIN EXPORTED_VARIABLES 
+ *           extern WStUSBHandle_t* husb;
+ *           USER CODE END EXPORTED_VARIABLES 
+ *        
+ *           USER CODE BEGIN EXPORTED_FUNCTIONS 
+ *           bool CDC_IsFree(void);
+ *           USER CODE END EXPORTED_FUNCTIONS 
+ *
+ *           usbd_cdc_if.c:
+ *            
+ *           static int8_t CDC_Receive_HS(uint8_t* Buf, uint32_t *Len);
+ *
+ *           replace user block 11
+ *
+ *           USER CODE BEGIN 11 
+ *            //USBD_CDC_SetRxBuffer(&hUsbDeviceHS, &Buf[0]);
+ *            WStUSB_RxClbk(husb,UserRxBufferHS,*Len);
+ *            USBD_CDC_ReceivePacket(&hUsbDeviceHS);
+ *            return (USBD_OK);
+ *           USER CODE END 11 
+ *           
+ *           uint8_t CDC_Transmit_HS(uint8_t* Buf, uint16_t Len)
+ *                   
+ *           replace user block 12
+ *           
+ *           USER CODE BEGIN 12
+ *           USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceHS.pClassData;
+ *           if (hcdc->TxState != 0){
+ *             return USBD_BUSY;
+ *           }
+ *           USBD_CDC_SetTxBuffer(&hUsbDeviceHS, Buf, Len);
+ *           result = USBD_CDC_TransmitPacket(&hUsbDeviceHS);
+ *           USER CODE END 12 
+ *
+ *
+ *
+ *           USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION 
+ *           bool CDC_IsFree(void)
+ *           {
+ *             USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceHS.pClassData;
+ *             if (hcdc->TxState != 0) 
+ *               return false;
+ *           
+ *             return true;
+ *           }
+ *           USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION 
  *************************************************************************
  */
  
 #include "WStUSB.h"
+
 #include "usbd_cdc_if.h"
 
 #include "wheap.h"
 #include "InterfacePrivate.h"
 
-#include "stdbool.h"
+
 //#define MYUSB_W8_FREE
 
 
@@ -43,7 +96,7 @@ static WStUSBHandle_t hdev;
 static bool ReadRxBuff( void* this_ptr,uint8_t* data,   size_t* len,size_t  max_len);
 static void SetRxBuff(  void* this_ptr,uint8_t* RxBuff, size_t  max_len);
 static void SetTxBuff(  void* this_ptr,uint8_t* RxBuff, size_t  max_len);
-static bool SendData(   void* this_ptr,uint8_t* data,size_t len);
+static bool SendData(   void* this_ptr,const uint8_t* data,size_t len);
 static void Process(    void* this_ptr); 
 static bool IsFree(     void* this_ptr);
 
@@ -95,14 +148,14 @@ static void ResetDrdy(WStUSBHandle_t* husb)
   
 }
 
-static bool SendData(void* this_ptr,uint8_t* data,size_t len)
+static bool SendData(void* this_ptr,const uint8_t* data,size_t len)
 {
-  WStUSBHandle_t* cthis = (WStUSBHandle_t*)this_ptr;
+  [[maybe_unused]]WStUSBHandle_t* cthis = (WStUSBHandle_t*)this_ptr;
   
   #ifdef MY_ST_USB_FS
     if(CDC_Transmit_FS(data,len) == USBD_BUSY) return false;
   #else 
-    if(CDC_Transmit_HS(data,len) == USBD_BUSY) return false;
+    if(CDC_Transmit_HS((uint8_t*)data,len) == USBD_BUSY) return false;
   #endif
   return true;
 }
