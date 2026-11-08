@@ -3,8 +3,8 @@
  * @file     WStUSB.c
  * @author   Wyrm
  * @brief    this file provide code for stm32 usb CDC shell 
- * @version  V1.0.3
- * @date     26 Oct 2026.
+ * @version  V1.0.4
+ * @date     08 Nov 2026
  * @note     plz correct usbd_cdc_if.h:
  *
  *           USER CODE BEGIN INCLUDE 
@@ -102,7 +102,7 @@ static bool IsFree(     void* this_ptr);
 
 static void ResetDrdy(WStUSBHandle_t* husb);
 
-static HwInterface_vtable_t vtable = {
+static const HwInterface_vtable_t vtable = {
     .ReadRxBuff = ReadRxBuff,
     .SetRxBuff = SetRxBuff,
     .SetTxBuff = SetTxBuff,

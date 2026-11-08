@@ -3,8 +3,8 @@
   * @file     WStUSB.h
   * @author   Kukushkin A.V.
   * @brief    Header file for HAL ST Driver use
-  * @version  V1.0.2
-  * @date     15 Oct 2026.
+  * @version  V1.0.4
+  * @date     08 Nov 2026
   ******************************************************************************
   */ 
 
